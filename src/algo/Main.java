@@ -8,7 +8,7 @@ public class Main {
 	public static void main(String[] args) throws IOException {
 		branchandbound bp = new branchandbound();
 		paramsVRP instance = new paramsVRP();
-		instance.initParams("dataset/C101.TXT");
+		instance.initParams("dataset/c109.TXT");
 		ArrayList<route> initRoutes = new ArrayList<route>();
 		ArrayList<route> bestRoutes = new ArrayList<route>();
 
