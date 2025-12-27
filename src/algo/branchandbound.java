@@ -78,7 +78,7 @@ public class branchandbound {
 			if ((upperbound - lowerbound) / upperbound < userParam.gap)
 				return true;
 
-			// init
+			// 说明是根节点，初始化
 			if (branching == null) { // root node - first call
 				// first call - root node
 				treeBB newNode = new treeBB();
@@ -101,6 +101,7 @@ public class branchandbound {
 			}
 			int MB = 1024 * 1024;
 			Runtime runtime = Runtime.getRuntime();
+			// 打印目前可用的内存情况
 			System.out.print("Java Memory=> Total:" + (runtime.totalMemory() / MB)
 					+ " Max:" + (runtime.maxMemory() / MB) + " Used:"
 					+ ((runtime.totalMemory() - runtime.freeMemory()) / MB) + " Free: "
@@ -108,9 +109,9 @@ public class branchandbound {
 
 			// Compute a solution for this node using Column generation
 			columngen CG = new columngen();
-
+			// 获得该节点的RLMP值
 			CGobj = CG.computeColGen(userParam, routes);
-			// feasible ? Does a solution exist?
+			// 判断RLMP的值是否是一个无效值，如果是，进行剪枝
 			if ((CGobj > 2 * userParam.maxlength) || (CGobj < -1e-6)) {
 				// can only be true when the routes in the solution include forbidden edges (can happen when the BB set branching values)
 				System.out.println("RELAX INFEASIBLE | Lower bound: " + lowerbound
@@ -122,6 +123,7 @@ public class branchandbound {
 			branching.lowestValue = CGobj;
 
 			// update the global lowerBound when required
+			// TODO： 需要调整下界更新策略
 			if ((branching.father != null) && (branching.father.son0 != null)
 					&& branching.father.toplevel) {
 				// all nodes above and on the left have been processed=> we can compute
@@ -132,7 +134,7 @@ public class branchandbound {
 				// root node
 				lowerbound = CGobj;
 			}
-
+			// 如果当前节点的RLMP值大于全局上界，则根据界限剪枝
 			if (branching.lowestValue > upperbound) {
 				CG = null;
 				System.out.println("CUT | Lower bound: " + lowerbound
@@ -142,8 +144,7 @@ public class branchandbound {
 						+ " routes");
 				return true; // cut this useless branch
 			} else {
-				// ///////////////////////////////////////////////////////////////////////////
-				// check the (integer) feasibility. Otherwise search for a branching
+				// 检查RLMP是否是一个整数解，如果是，则剪枝，如果不是，则进行分支
 				// variable
 				feasible = true;
 				bestEdge1 = -1;
@@ -151,7 +152,7 @@ public class branchandbound {
 				bestObj = -1.0;
 				bestVal = 0;
 
-				// transform the path variable (of the CG model) into edges variables
+				// 将path变量转化为edges变量
 				for (i = 0; i < userParam.nbclients + 2; i++) {
 					java.util.Arrays.fill(userParam.edges[i], 0.0);
 				}
@@ -169,7 +170,7 @@ public class branchandbound {
 					}
 				}
 
-				// find a fractional edge
+				// 寻找分数边
 				for (i = 0; i < userParam.nbclients + 2; i++) {
 					for (j = 0; j < userParam.nbclients + 2; j++) {
 						coef = userParam.edges[i][j];
@@ -179,8 +180,7 @@ public class branchandbound {
 							feasible = false;
 							// what if we impose this route in the solution? Q=1
 							// keep the ref of the edge which should lead to the largest change
-							change = Math.min(coef, Math.abs(1.0 - coef));
-							change *= routes.get(i).getcost();
+							change = 0.5 - Math.abs(coef - 0.5);
 							if (change > bestObj) {
 								bestEdge1 = i;
 								bestEdge2 = j;
@@ -190,9 +190,10 @@ public class branchandbound {
 						}
 					}
 				}
-
+				// 如果是整数解，根据最优性剪枝
 				if (feasible) {
-					if (branching.lowestValue < upperbound) { // new incumbant feasible solution!
+					if (branching.lowestValue < upperbound) {
+						// 更新全局上界
 						upperbound = branching.lowestValue;
 						bestRoutes.clear();
 						for (route r : routes) {
@@ -219,6 +220,7 @@ public class branchandbound {
                     }
 					return true;
 				} else {
+					// 如果是小数解，进行分支
 					System.out.println("INTEG INFEAS | Lower bound: " + lowerbound
 							+ " | Upper bound: " + upperbound + " | Gap: "
 							+ ((upperbound - lowerbound) / upperbound) + " | BB Depth: "
@@ -242,8 +244,7 @@ public class branchandbound {
 					// branching on edges[bestEdge1][bestEdge2]=0
 					EdgesBasedOnBranching(userParam, newNode1, false);
 
-					// the initial lp for the CG contains all the routes of the previous
-					// solution less(去掉分支的边) the routes containing this arc
+					// 将所有包含这个边的列都删除
 					ArrayList<route> nodeRoutes = new ArrayList<route>();
 					for (route r : routes) {
 						ArrayList<Integer> path = r.getpath();
@@ -273,6 +274,7 @@ public class branchandbound {
 
 					// second branch -> set edges[bestEdge1][bestEdge2]=1
 					// record the branching information in a tree list
+					// 保证顾客点1和顾客2必须得连续访问
 					treeBB newNode2 = new treeBB();
 					newNode2.father = branching;
 					newNode2.branchFrom = bestEdge1;
@@ -296,8 +298,7 @@ public class branchandbound {
 						ArrayList<Integer> path = r.getpath();
 						boolean accept = true;
 						if (path.size() > 3) { // we must keep trivial routes
-							// Depot-City-Depot in the set to ensure
-							// feasibility of the CG
+							// 把其他不经过这条边的path都删除掉
 							prevcity = 0;
 							for (i = 1; accept && (i < path.size()); i++) {
 								city = path.get(i);

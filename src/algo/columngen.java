@@ -75,7 +75,7 @@ public class columngen {
 			GRBConstr[] lpmatrix = new GRBConstr[userParam.nbclients];
 			for (i = 0; i < userParam.nbclients; i++) {
 				// addConstr(lhs, sense, rhs, name)
-				lpmatrix[i] = model.addConstr(new GRBLinExpr(), GRB.GREATER_EQUAL, 1.0, "c" + i);
+				lpmatrix[i] = model.addConstr(new GRBLinExpr(), GRB.EQUAL, 1.0, "c" + i);
 			}
 
 			// 变量容器
